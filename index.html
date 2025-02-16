@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Кликер с Хешами</title>
+    <style>
+        body { text-align: center; font-family: Arial, sans-serif; }
+        #game { display: none; }
+        button { font-size: 24px; padding: 10px; margin-top: 20px; }
+        #scoreboard { margin-top: 20px; white-space: pre-line; }
+    </style>
+</head>
+<body>
+
+    <h1>Многопользовательский Кликер с Хешами</h1>
+    
+    <div id="login">
+        <input type="text" id="nickname" placeholder="Введите ник">
+        <button onclick="startGame()">Играть</button>
+    </div>
+
+    <div id="game">
+        <h2>Привет, <span id="player-name"></span>!</h2>
+        <button onclick="clickButton()">Клик!</button>
+        <h3>Клики: <span id="click-count">0</span></h3>
+        <h3>Красивые хеши: <span id="valid-hash-count">0</span></h3>
+        <h3>Таблица лидеров:</h3>
+        <pre id="scoreboard"></pre>
+    </div>
+
+    <script>
+        let socket;
+        let playerName = "";
+        let clickCount = 0;
+        let clickCountHash = 0;
+        let validHashCount = 0;
+
+        async function sha256(message) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(message);
+            const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+            return Array.from(new Uint8Array(hashBuffer))
+                .map(b => b.toString(16).padStart(2, '0'))
+                .join('');
+        }
+
+        function startGame() {
+            playerName = document.getElementById("nickname").value.trim();
+            if (playerName === "") return alert("Введите ник!");
+
+            document.getElementById("login").style.display = "none";
+            document.getElementById("game").style.display = "block";
+            document.getElementById("player-name").textContent = playerName;
+
+            socket = new WebSocket("ws://" + window.location.host + "/ws");
+
+            socket.onopen = function() {
+                socket.send(playerName);
+            };
+
+            socket.onmessage = function(event) {
+            const message = event.data;
+
+            // Проверяем, содержит ли сообщение информацию о пользователе
+            if (message.startsWith("UserInfo:")) {
+                // Удаляем префикс 'UserInfo:'
+                const userInfo = message.slice(9);
+
+                // Разбиваем строку на компоненты
+                const [login, allClicks, validClicks] = userInfo.split('_');
+
+                // Обновляем информацию на странице
+                playerName = login;
+                validHashCount = Number(validClicks);
+                clickCount = Number(allClicks);
+                document.getElementById("player-name").textContent = login;
+                document.getElementById("click-count").textContent = allClicks;
+                document.getElementById("valid-hash-count").textContent = validClicks;
+            } else {
+                // Обработка других типов сообщений, например, обновление таблицы лидеров
+                document.getElementById("scoreboard").textContent = message;
+            }
+        };
+
+            socket.onclose = function() {
+                alert("Соединение потеряно!");
+            };
+        }
+
+        async function clickButton() {
+            clickCount++;
+            clickCountHash++;
+            document.getElementById("click-count").textContent = clickCount;
+            
+            let hashInput = `${playerName}_${validHashCount}_${clickCountHash}`;
+            let hash = await sha256(hashInput);
+            if (hash.startsWith("000")) {
+                validHashCount++;
+                clickCountHash = 0;
+                document.getElementById("valid-hash-count").textContent = validHashCount;
+                if (socket) {
+                    socket.send(`valid_${hashInput}`);
+                }
+            }
+        }
+    </script>
+
+</body>
+</html>
