@@ -22,5 +22,5 @@ func main() {
 	go userHandler.HandleMessages()
 
 	fmt.Println("Сервер запущен на :8080")
-	http.ListenAndServe(":8081", nil)
+	http.ListenAndServe(":8080", nil)
 }
