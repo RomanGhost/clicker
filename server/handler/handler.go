@@ -2,24 +2,24 @@ package handler
 
 import (
 	"chat-back/database/model"
-	"chat-back/server/service"
 	"fmt"
 	"log"
 	"net/http"
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"gorm.io/gorm"
 )
 
-type UserHandler struct {
-	service   *service.UserService
+type UserSocketHandler struct {
+	UserHandler
 	upgrader  websocket.Upgrader
 	clients   map[*websocket.Conn]*model.User
 	broadcast chan struct{}
 	mutex     *sync.Mutex
 }
 
-func NewUserHandler(service *service.UserService) *UserHandler {
+func NewUserSocketHandler(db *gorm.DB) *UserSocketHandler {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
@@ -30,20 +30,21 @@ func NewUserHandler(service *service.UserService) *UserHandler {
 		mutex     = &sync.Mutex{}
 	)
 
-	return &UserHandler{
-		service:   service,
-		upgrader:  upgrader,
-		clients:   clients,
-		broadcast: broadcast,
-		mutex:     mutex,
+	userHandler := *NewUserHandler(db)
+	return &UserSocketHandler{
+		UserHandler: userHandler,
+		upgrader:    upgrader,
+		clients:     clients,
+		broadcast:   broadcast,
+		mutex:       mutex,
 	}
 }
 
-func (h *UserHandler) ServeHome(w http.ResponseWriter, r *http.Request) {
+func (h *UserSocketHandler) ServeHome(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, "index.html")
 }
 
-func (h *UserHandler) connectUser(login string, conn *websocket.Conn) *model.User {
+func (h *UserSocketHandler) connectUser(login string, conn *websocket.Conn) *model.User {
 	player, err := h.service.FindByLogin(login)
 	if err != nil {
 		player = &model.User{Login: login, ValidClicks: 0}
@@ -55,7 +56,7 @@ func (h *UserHandler) connectUser(login string, conn *websocket.Conn) *model.Use
 	return player
 }
 
-func (h *UserHandler) validMessage(message string, player *model.User, conn *websocket.Conn) {
+func (h *UserSocketHandler) validMessage(message string, player *model.User, conn *websocket.Conn) {
 	player, err := h.service.ValidateMessage(message, player.ID)
 	if err != nil {
 		log.Printf("Error validate message: %v\n", err)
@@ -65,7 +66,7 @@ func (h *UserHandler) validMessage(message string, player *model.User, conn *web
 	h.clients[conn] = player
 }
 
-func (h *UserHandler) HandleConnections(w http.ResponseWriter, r *http.Request) {
+func (h *UserSocketHandler) HandleConnections(w http.ResponseWriter, r *http.Request) {
 	conn, err := h.upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		fmt.Println("Ошибка соединения:", err)
@@ -98,7 +99,7 @@ func (h *UserHandler) HandleConnections(w http.ResponseWriter, r *http.Request) 
 	}
 }
 
-func (h *UserHandler) HandleMessages() {
+func (h *UserSocketHandler) HandleMessages() {
 	for range h.broadcast {
 		h.mutex.Lock()
 		scores := ""

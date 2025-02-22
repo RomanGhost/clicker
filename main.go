@@ -2,25 +2,27 @@ package main
 
 import (
 	"chat-back/database"
-	"chat-back/database/repository"
 	"chat-back/server/handler"
-	"chat-back/server/service"
-	"fmt"
-	"net/http"
+
+	"github.com/gin-gonic/gin"
 )
 
 func main() {
 	db := database.GetDBInstance("main.db")
+	r := gin.Default()
 
-	userRepository := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepository)
-	userHandler := handler.NewUserHandler(userService)
+	handler.RegisterControllers(r, db)
 
-	http.HandleFunc("/", userHandler.ServeHome)
-	http.HandleFunc("/ws", userHandler.HandleConnections)
+	r.Run(":8080")
+	// userRepository := repository.NewUserRepository(db)
+	// userService := service.NewUserService(userRepository)
+	// userHandler := handler.NewUserSocketHandler(userService)
 
-	go userHandler.HandleMessages()
+	// http.HandleFunc("/", userHandler.ServeHome)
+	// http.HandleFunc("/ws", userHandler.HandleConnections)
 
-	fmt.Println("Сервер запущен на :8080")
-	http.ListenAndServe(":8080", nil)
+	// go userHandler.HandleMessages()
+
+	// fmt.Println("Сервер запущен на :8080")
+	// http.ListenAndServe(":8080", nil)
 }
