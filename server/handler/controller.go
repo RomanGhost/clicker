@@ -11,8 +11,11 @@ func RegisterControllers(r *gin.Engine, db *gorm.DB) {
 
 func registerAuthControler(r *gin.Engine, db *gorm.DB) {
 	uh := NewUserHandler(db)
+	ush := NewUserSocketHandler(db)
 
 	r.POST("/signup", uh.PostSignUp)
 	r.POST("/login", uh.PostLogin)
 	r.POST("/logout", Logout)
+
+	r.GET("/ws", ush.HandleWebSocket)
 }
