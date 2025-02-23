@@ -18,4 +18,5 @@ func registerAuthControler(r *gin.Engine, db *gorm.DB) {
 	r.POST("/logout", Logout)
 
 	r.GET("/ws", ush.HandleWebSocket)
+	go ush.HandleMessages()
 }

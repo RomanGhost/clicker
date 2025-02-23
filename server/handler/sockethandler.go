@@ -2,6 +2,8 @@ package handler
 
 import (
 	"chat-back/database/model"
+	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,6 +14,17 @@ import (
 	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
 )
+
+type Message struct {
+	TypeMessage string          `json:"typeMessage"`
+	Data        json.RawMessage `json:"data"`
+}
+
+// Определяем структуру для пользователя
+type Validate struct {
+	Valid uint `json:"valid"`
+	Nonce uint `json:"nonce"`
+}
 
 type UserSocketHandler struct {
 	UserHandler
@@ -42,8 +55,15 @@ func NewUserSocketHandler(db *gorm.DB) *UserSocketHandler {
 	}
 }
 
-func (ush *UserSocketHandler) validMessage(message string, player *model.User, conn *websocket.Conn) error {
-	player, err := ush.service.ValidateMessage(message, player.ID)
+func (ush *UserSocketHandler) validMessage(valid, nonce uint, player *model.User, conn *websocket.Conn) error {
+	// message format: "login_valid_nonce"
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%v_%v_%v", player.Login, valid, nonce)))
+	log.Printf("Res of sum: %x\n", sum)
+	if sum[0] != 0 && sum[1] < 128 {
+		return fmt.Errorf("sha256 sum is not valid")
+	}
+
+	err := ush.service.ValidateMessage(valid, nonce, player)
 	if err != nil {
 		log.Printf("Error validate message: %v\n", err)
 		return fmt.Errorf("error %v", err)
@@ -56,6 +76,7 @@ func (ush *UserSocketHandler) validMessage(message string, player *model.User, c
 func (ush *UserSocketHandler) HandleWebSocket(c *gin.Context) {
 	var player *model.User
 
+	// get cookies for auth
 	tokenCookie, err := c.Request.Cookie("Authorization")
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "token in cookies not found"})
@@ -91,6 +112,7 @@ func (ush *UserSocketHandler) HandleWebSocket(c *gin.Context) {
 		log.Println("Token is invalid")
 	}
 
+	// обновляем соединение
 	conn, err := ush.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "connection error"})
@@ -120,22 +142,42 @@ func (ush *UserSocketHandler) HandleWebSocket(c *gin.Context) {
 			break
 		}
 
-		message := string(msg)
-		if len(message) == 0 {
+		if len(msg) == 0 {
 			continue // Пропускаем пустые сообщения
 		}
 
-		ush.mutex.Lock()
-		if len(message) >= 6 && message[:5] == "valid" {
-			err := ush.validMessage(message[6:], player, conn)
+		var message Message
+		err = json.Unmarshal(msg, &message)
+		if err != nil {
+			log.Printf("message invalid: %v \n", err)
+			continue
+		}
+
+		switch message.TypeMessage {
+		// case "updateClicks":
+		// 	ush.mutex.Lock()
+		// 	err := ush.service.UpdateAllClicks(100, player)
+		// 	ush.mutex.Unlock()
+		// 	if err != nil {
+		// 		continue
+		// 	}
+		case "valid":
+			var validateMessage Validate
+			if err := json.Unmarshal(message.Data, &validateMessage); err != nil {
+				log.Fatalf("Ошибка при разборе данных: %v", err)
+				continue
+			}
+
+			ush.mutex.Lock()
+			err := ush.validMessage(validateMessage.Valid, validateMessage.Nonce, player, conn)
+			ush.mutex.Unlock()
 			if err != nil {
 				continue
 			}
-		} else {
+		default:
 			log.Println("Получено неизвестное сообщение:", message)
 			continue
 		}
-		ush.mutex.Unlock()
 
 		// Отправка обновлений всем клиентам
 		select {

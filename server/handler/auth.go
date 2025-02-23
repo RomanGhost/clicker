@@ -11,8 +11,9 @@ import (
 
 func generateToken(c *gin.Context, user *model.User) {
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub": user.ID,
-		"exp": time.Now().Add(time.Hour * 24 * 30).Unix(),
+		"sub":  user.ID,
+		"logU": user.Login,
+		"exp":  time.Now().Add(time.Hour * 24 * 30).Unix(),
 	})
 
 	//TODO переделать на os.Getenv("SECRET")
@@ -42,8 +43,8 @@ func (h *UserHandler) PostSignUp(c *gin.Context) {
 		return
 	}
 
-	if body.Password == body.AcceptPassword {
-		c.JSON(http.StatusConflict, gin.H{"message": "Passwords didn't not match"})
+	if body.Password != body.AcceptPassword {
+		c.JSON(http.StatusMethodNotAllowed, gin.H{"message": "Passwords didn't not match"})
 		c.Abort()
 		return
 	}

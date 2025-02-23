@@ -3,12 +3,7 @@ package service
 import (
 	"chat-back/database/model"
 	"chat-back/database/repository"
-	"crypto/sha256"
 	"fmt"
-	"strconv"
-	"strings"
-
-	"log"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -64,73 +59,28 @@ func (s *UserService) GetUserById(userID uint) (*model.User, error) {
 	return s.repo.FindById(userID)
 }
 
-func (s *UserService) addAllClicks(user *model.User, delta uint) (*model.User, error) {
-	user.AllClicks += delta
+func (s *UserService) UpdateAllClicks(countClicks uint, user *model.User) error {
+	user.AllClicks += 100
 
 	err := s.repo.Update(user)
 	if err != nil {
-		return nil, err
+		return err
 	}
-	return user, nil
+	return nil
 }
 
-func (s *UserService) addValidClicks(user *model.User, delta uint) (*model.User, error) {
-	user.ValidClicks += delta
+func (s *UserService) ValidateMessage(valid, nonce uint, user *model.User) error {
+	if user.ValidClicks != valid {
+		return fmt.Errorf("valid clicks invalid")
+	}
+
+	user.ValidClicks += 1
+	user.AllClicks += nonce % 100
 
 	err := s.repo.Update(user)
 	if err != nil {
-		return nil, err
-	}
-	return user, nil
-}
-
-func (s *UserService) ValidateMessage(message string, userID uint) (*model.User, error) {
-	// message format: "login_valid_nonce"
-	user, err := s.repo.FindById(userID)
-	if err != nil {
-		log.Printf("Get user error: %v\n", err)
-		return nil, err
+		return err
 	}
 
-	sum := sha256.Sum256([]byte(message))
-	log.Printf("Res of sum: %x\n", sum)
-	if sum[0] != 0 {
-		return nil, fmt.Errorf("sha256 sum is not valid")
-	}
-
-	parts := strings.Split(message, "_")
-	if len(parts) >= 3 {
-		_, valid, nonce := parts[0], parts[1], parts[2]
-		validU64, err := strconv.ParseUint(valid, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		validU := uint(validU64)
-		if user.ValidClicks != validU {
-			user.ValidClicks = validU
-			err = s.repo.Update(user)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		nonceU64, err := strconv.ParseUint(nonce, 10, 64)
-		if err != nil {
-			return nil, err
-		}
-
-		user, err = s.addAllClicks(user, uint(nonceU64))
-		if err != nil {
-			return nil, err
-		}
-		user, err = s.addValidClicks(user, 1)
-		if err != nil {
-			return nil, err
-		}
-
-		return user, nil
-	} else {
-		return nil, fmt.Errorf("not enough elements after splitting the string")
-	}
-
+	return nil
 }
