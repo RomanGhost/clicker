@@ -8,4 +8,5 @@ type UserUpdate struct {
 	UpdateID uint   `gorm:"primaryKey"`
 	User     User   `gorm:"foreignKey:UserID"`
 	Update   Update `gorm:"foreignKey:UpdateID"`
+	Level    uint
 }
