@@ -7,6 +7,8 @@ type Update struct {
 	ValidCoef       float64
 	ClickCoef       float64
 	MinLeague       uint
-	Price           uint
 	PriceGrowthCoef float32
+	PriceValid      float64
+	PriceClick      float64
+	Description     string
 }

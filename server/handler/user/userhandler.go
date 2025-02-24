@@ -1,7 +1,6 @@
-package handler
+package user
 
 import (
-	"chat-back/database/repository"
 	"chat-back/server/service"
 
 	"gorm.io/gorm"
@@ -12,8 +11,8 @@ type UserHandler struct {
 }
 
 func NewUserHandler(db *gorm.DB) *UserHandler {
-	userRepository := repository.NewUserRepository(db)
-	userService := service.NewUserService(userRepository)
+
+	userService := service.NewUserService(db)
 	userHandler := UserHandler{
 		service: userService,
 	}

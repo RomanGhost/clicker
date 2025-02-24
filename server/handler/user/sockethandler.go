@@ -1,4 +1,4 @@
-package handler
+package user
 
 import (
 	"chat-back/database/model"
@@ -22,8 +22,8 @@ type Message struct {
 
 // Определяем структуру для пользователя
 type Validate struct {
-	Valid uint `json:"valid"`
-	Nonce uint `json:"nonce"`
+	Valid float64 `json:"valid"`
+	Nonce float64 `json:"nonce"`
 }
 
 type UserSocketHandler struct {
@@ -55,7 +55,7 @@ func NewUserSocketHandler(db *gorm.DB) *UserSocketHandler {
 	}
 }
 
-func (ush *UserSocketHandler) validMessage(valid, nonce uint, player *model.User, conn *websocket.Conn) error {
+func (ush *UserSocketHandler) validMessage(valid, nonce float64, player *model.User, conn *websocket.Conn) error {
 	// message format: "login_valid_nonce"
 	sum := sha256.Sum256([]byte(fmt.Sprintf("%v_%v_%v", player.Login, valid, nonce)))
 	log.Printf("Res of sum: %x\n", sum)
@@ -193,7 +193,7 @@ func (ush *UserSocketHandler) HandleMessages() {
 		ush.mutex.Lock()
 		scores := ""
 		for _, player := range ush.clients {
-			scores += fmt.Sprintf("%s: %d валидных кликов\n", player.Login, player.ValidClicks)
+			scores += fmt.Sprintf("%s: %v валидных кликов\n", player.Login, player.ValidClicks)
 		}
 		for client := range ush.clients {
 			client.WriteMessage(websocket.TextMessage, []byte(scores))

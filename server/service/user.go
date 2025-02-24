@@ -6,14 +6,16 @@ import (
 	"fmt"
 
 	"golang.org/x/crypto/bcrypt"
+	"gorm.io/gorm"
 )
 
 type UserService struct {
 	repo repository.UserRepository
 }
 
-func NewUserService(repo repository.UserRepository) *UserService {
-	return &UserService{repo: repo}
+func NewUserService(db *gorm.DB) *UserService {
+	userRepository := repository.NewUserRepository(db)
+	return &UserService{repo: userRepository}
 }
 
 func (s *UserService) FindByLogin(login string) (*model.User, error) {
@@ -69,13 +71,13 @@ func (s *UserService) UpdateAllClicks(countClicks uint, user *model.User) error 
 	return nil
 }
 
-func (s *UserService) ValidateMessage(valid, nonce uint, user *model.User) error {
+func (s *UserService) ValidateMessage(valid, nonce float64, user *model.User) error {
 	if user.ValidClicks != valid {
 		return fmt.Errorf("valid clicks invalid")
 	}
 
 	user.ValidClicks += 1
-	user.AllClicks += nonce % 100
+	user.AllClicks += nonce
 
 	err := s.repo.Update(user)
 	if err != nil {
