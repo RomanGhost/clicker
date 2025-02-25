@@ -22,10 +22,34 @@ func NewUpdateService(db *gorm.DB) *UpdateService {
 	return &UpdateService{repo: repo, userUpdateRepo: userUpdateRepo, userRepo: userRepo}
 }
 
+func (s *UpdateService) GetById(ID uint) (*model.Update, error) {
+	return s.repo.FindById(ID)
+}
+
 func (s *UpdateService) AddUpdateForUser(update *model.Update, user *model.User) (*model.UserUpdate, error) {
 	userUpdate, err := s.userUpdateRepo.FindByUserUpdate(user, update)
 	if userUpdate != nil && err == nil {
-		return nil, fmt.Errorf("user update found")
+		return nil, fmt.Errorf("userUpdate found")
+	}
+
+	if update.MinLeague > user.League.Number {
+		return nil, fmt.Errorf("user league is lower than required, User:%v, Update:%v", user.League.Number, update.MinLeague)
+	}
+
+	if user.AllClicks < update.PriceClick {
+		return nil, fmt.Errorf("user clicks balance less update: %v", update.PriceClick)
+	}
+
+	if user.ValidClicks < update.PriceValid {
+		return nil, fmt.Errorf("user valid balance less update: %v", update.PriceValid)
+	}
+
+	user.AllClicks -= update.PriceClick
+	user.ValidClicks -= update.PriceValid
+
+	err = s.userRepo.Update(user)
+	if err != nil {
+		return nil, fmt.Errorf("user update error")
 	}
 
 	newUserUpdate := model.UserUpdate{
@@ -39,10 +63,6 @@ func (s *UpdateService) AddUpdateForUser(update *model.Update, user *model.User)
 		return nil, err
 	}
 	return &newUserUpdate, nil
-}
-
-func (s *UpdateService) GetById(ID uint) (*model.Update, error) {
-	return s.repo.FindById(ID)
 }
 
 func (s *UpdateService) LevelUpUpdateForUser(update *model.Update, user *model.User) (*model.UserUpdate, error) {

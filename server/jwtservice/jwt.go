@@ -33,7 +33,7 @@ func GetFromJWT(tokenString string) (*JWTToken, error) {
 		return secret, nil
 	})
 	if err != nil {
-		return nil, fmt.Errorf("Ошибка при парсинге токена: %v", err)
+		return nil, fmt.Errorf("error parsing token: %v", err)
 	}
 
 	// Проверяем, что токен валиден и приводим claims к jwt.MapClaims:
@@ -46,7 +46,7 @@ func GetFromJWT(tokenString string) (*JWTToken, error) {
 		return &JWTToken{
 			UserID:    userID,
 			UserLogin: claims["logU"].(string),
-			TimeLimit: claims["exp"].(int64),
+			TimeLimit: int64(claims["exp"].(float64)),
 		}, nil
 	} else {
 		return nil, fmt.Errorf("token is invalid")
