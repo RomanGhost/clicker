@@ -1,110 +1,131 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Кликер с Хешами</title>
-    <style>
-        body { text-align: center; font-family: Arial, sans-serif; }
-        #game { display: none; }
-        button { font-size: 24px; padding: 10px; margin-top: 20px; }
-        #scoreboard { margin-top: 20px; white-space: pre-line; }
-    </style>
+  <meta charset="UTF-8">
+  <title>Clicker Frontend</title>
+  <!-- Подключаем React и Babel через CDN -->
+  <script crossorigin src="https://unpkg.com/react@17/umd/react.development.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@17/umd/react-dom.development.js"></script>
+  <script crossorigin src="https://unpkg.com/babel-standalone@6.26.0/babel.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f5f5f5;
+      padding: 20px;
+    }
+    input, button {
+      padding: 8px;
+      margin: 4px;
+      font-size: 16px;
+    }
+  </style>
 </head>
 <body>
+  <div id="root"></div>
+  <script type="text/babel">
 
-    <h1>Многопользовательский Кликер с Хешами</h1>
+    // Функция для вычисления SHA-256 хеша в виде шестнадцатеричной строки
+    async function sha256(message) {
+      const encoder = new TextEncoder();
+      const data = encoder.encode(message);
+      const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+      const hashArray = Array.from(new Uint8Array(hashBuffer));
+      const hashHex = hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+      return hashHex;
+    }
     
-    <div id="login">
-        <input type="text" id="nickname" placeholder="Введите ник">
-        <button onclick="startGame()">Играть</button>
-    </div>
-
-    <div id="game">
-        <h2>Привет, <span id="player-name"></span>!</h2>
-        <button onclick="clickButton()">Клик!</button>
-        <h3>Клики: <span id="click-count">0</span></h3>
-        <h3>Красивые хеши: <span id="valid-hash-count">0</span></h3>
-        <h3>Таблица лидеров:</h3>
-        <pre id="scoreboard"></pre>
-    </div>
-
-    <script>
-        let socket;
-        let playerName = "";
-        let clickCount = 0;
-        let clickCountHash = 0;
-        let validHashCount = 0;
-
-        async function sha256(message) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(message);
-            const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-            return Array.from(new Uint8Array(hashBuffer))
-                .map(b => b.toString(16).padStart(2, '0'))
-                .join('');
+    function App() {
+      const [loggedIn, setLoggedIn] = React.useState(false);
+      const [username, setUsername] = React.useState("");
+      const [validClicks, setValidClicks] = React.useState(0);
+      const [totalClicks, setTotalClicks] = React.useState(0);
+      const [loading, setLoading] = React.useState(false);
+      
+      // Функция для логина (отправляет запрос на /login)
+      const handleLogin = async () => {
+        if(username.trim() === "") return alert("Введите логин");
+        try {
+          const response = await fetch("/login", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ username })
+          });
+          if(response.ok) {
+            setLoggedIn(true);
+          } else {
+            alert("Ошибка логина");
+          }
+        } catch (error) {
+          console.error(error);
+          alert("Ошибка запроса");
         }
-
-        function startGame() {
-            playerName = document.getElementById("nickname").value.trim();
-            if (playerName === "") return alert("Введите ник!");
-
-            document.getElementById("login").style.display = "none";
-            document.getElementById("game").style.display = "block";
-            document.getElementById("player-name").textContent = playerName;
-
-            socket = new WebSocket("ws://" + window.location.host + "/ws");
-
-            socket.onopen = function() {
-                socket.send(playerName);
-            };
-
-            socket.onmessage = function(event) {
-            const message = event.data;
-
-            // Проверяем, содержит ли сообщение информацию о пользователе
-            if (message.startsWith("UserInfo:")) {
-                // Удаляем префикс 'UserInfo:'
-                const userInfo = message.slice(9);
-
-                // Разбиваем строку на компоненты
-                const [login, allClicks, validClicks] = userInfo.split('_');
-
-                // Обновляем информацию на странице
-                playerName = login;
-                validHashCount = Number(validClicks);
-                clickCount = Number(allClicks);
-                document.getElementById("player-name").textContent = login;
-                document.getElementById("click-count").textContent = allClicks;
-                document.getElementById("valid-hash-count").textContent = validClicks;
-            } else {
-                // Обработка других типов сообщений, например, обновление таблицы лидеров
-                document.getElementById("scoreboard").textContent = message;
-            }
-        };
-
-            socket.onclose = function() {
-                alert("Соединение потеряно!");
-            };
+      };
+      
+      // Функция для клика
+      const handleClick = async () => {
+        setLoading(true);
+        // Ищем nonce, для которого хеш строки "логин_валидныеКлики_nonce" начинается с "000"
+        let nonce = 0;
+        let validNonce = null;
+        while (true) {
+          const data = `${username}_${validClicks}_${nonce}`;
+          const hash = await sha256(data);
+          if(hash.startsWith("000")) {
+            validNonce = nonce;
+            break;
+          }
+          nonce++;
         }
-
-        async function clickButton() {
-            clickCount++;
-            clickCountHash++;
-            document.getElementById("click-count").textContent = clickCount;
-            
-            let hashInput = `${playerName}_${validHashCount}_${clickCountHash}`;
-            let hash = await sha256(hashInput);
-            if (hash.startsWith("000")) {
-                validHashCount++;
-                clickCountHash = 0;
-                document.getElementById("valid-hash-count").textContent = validHashCount;
-                if (socket) {
-                    socket.send(`valid_${hashInput}`);
-                }
-            }
+        // Отправляем запрос на клик с найденным nonce
+        try {
+          const response = await fetch("/click", {
+            method: "POST",
+            headers: {"Content-Type": "application/json"},
+            body: JSON.stringify({ username, nonce: validNonce })
+          });
+          if(response.ok) {
+            const result = await response.json();
+            // Ожидается, что сервер вернёт { validClicks, totalClicks }
+            setValidClicks(result.validClicks);
+            setTotalClicks(result.totalClicks);
+          } else {
+            alert("Ошибка клика");
+          }
+        } catch (error) {
+          console.error(error);
+          alert("Ошибка запроса");
         }
-    </script>
-
+        setLoading(false);
+      };
+      
+      return (
+        <div style={{ padding: "20px", background: "#fff", borderRadius: "8px", maxWidth: "400px", margin: "0 auto" }}>
+          { loggedIn ? (
+            <div>
+              <h1>Привет, {username}!</h1>
+              <p><strong>Валидных кликов:</strong> {validClicks}</p>
+              <p><strong>Общее количество кликов:</strong> {totalClicks}</p>
+              <button onClick={handleClick} disabled={loading}>
+                {loading ? "Подсчет..." : "Клик!"}
+              </button>
+            </div>
+          ) : (
+            <div>
+              <h1>Вход</h1>
+              <input 
+                type="text" 
+                placeholder="Введите логин" 
+                value={username} 
+                onChange={(e) => setUsername(e.target.value)} 
+              />
+              <button onClick={handleLogin}>Войти</button>
+            </div>
+          )}
+        </div>
+      );
+    }
+    
+    ReactDOM.render(<App />, document.getElementById('root'));
+  </script>
 </body>
 </html>

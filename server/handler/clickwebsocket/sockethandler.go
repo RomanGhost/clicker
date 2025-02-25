@@ -116,14 +116,14 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 		case "click_batch":
 			var batchMessage ClickBatch
 
-			clickCoef, err := ush.userUpdateService.GetClickCoef(player)
-			if err != nil {
-				log.Fatalf("Error with read clickCoef: %v", err)
-			}
+			clickCoef := ush.userUpdateService.GetClickCoef(player)
+			// if err != nil {
+			// 	log.Printf("Error with read clickCoef: %v", err)
+			// }
 
 			err = json.Unmarshal(message.Data, &batchMessage)
 			if err != nil {
-				log.Fatalf("Error with read batch message: %v", err)
+				log.Printf("Error with read batch message: %v", err)
 				continue
 			}
 			updateClicks := ValidateBatch(&batchMessage, clickCoef)
@@ -133,7 +133,7 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 			err = ush.userService.UpdateAllClicks(updateClicks, player)
 			if err != nil {
 				ush.mutex.Unlock()
-				log.Fatalf("Error validate batch message: %v\n", err)
+				log.Printf("Error validate batch message: %v\n", err)
 				continue
 			}
 			ush.mutex.Unlock()
@@ -141,16 +141,16 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 		case "valid":
 			var validateMessage Validate
 			if err := json.Unmarshal(message.Data, &validateMessage); err != nil {
-				log.Fatalf("Ошибка при разборе данных: %v", err)
+				log.Printf("Ошибка при разборе данных: %v", err)
 				continue
 			}
 			messageValidErr := ValidateMessageValid(validateMessage, player.Login)
 			if messageValidErr == nil {
 				//get coef
-				validClickCoef, err := ush.userUpdateService.GetValidClickCoef(player)
-				if err != nil {
-					log.Fatalf("Error with read clickCoef: %v", err)
-				}
+				validClickCoef := ush.userUpdateService.GetValidClickCoef(player)
+				// if err != nil {
+				// 	log.Fatalf("Error with read valid clickCoef: %v", err)
+				// }
 
 				ush.mutex.Lock()
 				// update user
@@ -179,7 +179,7 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 
 		userJson, err := json.Marshal(userInfo)
 		if err != nil {
-			log.Fatalln("Error marshal user info")
+			log.Println("Error marshal user info")
 			continue
 		}
 		userMessage := Message{TypeMessage: "user", Data: userJson}

@@ -26,28 +26,28 @@ func (s *UpdateService) GetById(ID uint) (*model.Update, error) {
 	return s.repo.FindById(ID)
 }
 
-func (s *UpdateService) GetValidClickCoef(user *model.User) (float64, error) {
+func (s *UpdateService) GetValidClickCoef(user *model.User) float64 {
 	userUpdate, err := s.userUpdateRepo.FindbyUser(user)
 	if err != nil {
-		return 0, err
+		return 1
 	}
 	var resultCoef float64
 	for _, usUp := range userUpdate {
 		resultCoef += usUp.ValidCoef
 	}
-	return resultCoef, nil
+	return resultCoef
 }
 
-func (s *UpdateService) GetClickCoef(user *model.User) (float64, error) {
+func (s *UpdateService) GetClickCoef(user *model.User) float64 {
 	userUpdate, err := s.userUpdateRepo.FindbyUser(user)
 	if err != nil {
-		return 0, err
+		return 1
 	}
 	var resultCoef float64
 	for _, usUp := range userUpdate {
 		resultCoef += usUp.ClickCoef
 	}
-	return resultCoef, nil
+	return resultCoef
 }
 
 func (s *UpdateService) AddUpdateForUser(update *model.Update, user *model.User) (*model.UserUpdate, error) {

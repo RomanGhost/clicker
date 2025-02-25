@@ -43,7 +43,8 @@ func (r *userUpdateRepository) FindbyUser(user *model.User) ([]model.UserUpdate,
 	var userUpdates []model.UserUpdate
 	err := r.db.Find(&userUpdates, "user_id = ?", user.ID)
 	if err != nil {
-		return nil, fmt.Errorf("error with read userUpdates from db")
+		return nil, fmt.Errorf("error with read userUpdates from db, err: %v", err)
 	}
+
 	return userUpdates, nil
 }
