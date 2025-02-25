@@ -2,6 +2,7 @@ package user
 
 import (
 	"chat-back/database/model"
+	"chat-back/server/jwtservice"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,6 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 	"github.com/gorilla/websocket"
 	"gorm.io/gorm"
 )
@@ -84,34 +84,19 @@ func (ush *UserSocketHandler) HandleWebSocket(c *gin.Context) {
 	}
 	tokenString := tokenCookie.Value
 
-	// TODO: заменить на os.Getenv("SECRET")
-	secret := []byte("testPhrase")
-	parsedToken, err := jwt.ParseWithClaims(tokenString, jwt.MapClaims{}, func(token *jwt.Token) (interface{}, error) {
-		return secret, nil
-	})
+	parsedToken, err := jwtservice.GetFromJWT(tokenString)
 	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Error parsing"})
-		log.Println("Ошибка при парсинге токена:", err)
+		c.JSON(http.StatusUnauthorized, gin.H{"message": "Failed to parse jwt"})
+		c.Abort()
 		return
 	}
 
-	// Проверяем, что токен валиден и приводим claims к jwt.MapClaims:
-	if claims, ok := parsedToken.Claims.(jwt.MapClaims); ok && parsedToken.Valid {
-		// Извлекаем информацию:
-		subVal := claims["sub"].(float64)
-
-		userID := uint(subVal)
-		player, err = ush.service.GetUserById(userID)
-		if err != nil {
-			c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("User with id: %v not found", subVal)})
-			log.Printf("User with id: %v not found", subVal)
-			return
-		}
-	} else {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Token is invalid"})
-		log.Println("Token is invalid")
+	player, err = ush.service.GetUserById(parsedToken.UserID)
+	if err != nil {
+		c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("User with id: %v not found", parsedToken.UserID)})
+		log.Printf("User with id: %v not found", parsedToken.UserID)
+		return
 	}
-
 	// обновляем соединение
 	conn, err := ush.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {

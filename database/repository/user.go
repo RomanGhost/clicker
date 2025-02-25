@@ -15,8 +15,10 @@ type userRepository struct {
 	db *gorm.DB
 }
 
-func NewUserRepository(db *gorm.DB) *userRepository {
-	return &userRepository{db: db}
+func NewUserRepository(db *gorm.DB) UserRepository {
+	return &userRepository{
+		db: db,
+	}
 }
 
 func (r *userRepository) FindById(ID uint) (*model.User, error) {

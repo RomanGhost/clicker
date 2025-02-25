@@ -54,7 +54,7 @@ func (h *TransactionHandler) PostCreateTransaction(c *gin.Context) {
 	newTransaction, err := h.service.CreateTransaction(senderUser, receiverUser, body.ValidClicksTransfer, body.ClicksTransfer)
 	if err != nil {
 		log.Printf("Transaction error err: %v\n", err)
-		c.JSON(http.StatusConflict, gin.H{"message": fmt.Sprintf("error with transaction: %v", err)})
+		c.JSON(http.StatusForbidden, gin.H{"message": fmt.Sprintf("error with transaction: %v", err)})
 		c.Abort()
 		return
 	}

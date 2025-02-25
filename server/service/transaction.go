@@ -14,8 +14,9 @@ type TransactionService struct {
 }
 
 func NewTransactionService(db *gorm.DB) *TransactionService {
-	repo := repository.NewTransactionRepository(db)
+	repo := repository.NewRepository[model.Transaction](db)
 	userRepo := repository.NewUserRepository(db)
+
 	return &TransactionService{repo: repo, userRepo: userRepo}
 }
 

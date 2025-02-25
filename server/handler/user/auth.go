@@ -2,22 +2,20 @@ package user
 
 import (
 	"chat-back/database/model"
+	"chat-back/server/jwtservice"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
 
 func generateToken(c *gin.Context, user *model.User) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"sub":  user.ID,
-		"logU": user.Login,
-		"exp":  time.Now().Add(time.Hour * 24 * 30).Unix(),
-	})
-
-	//TODO переделать на os.Getenv("SECRET")
-	tokenString, err := token.SignedString([]byte("testPhrase"))
+	token := jwtservice.JWTToken{
+		UserID:    user.ID,
+		UserLogin: user.Login,
+		TimeLimit: time.Now().Add(time.Hour * 24 * 30).Unix(),
+	}
+	tokenString, err := token.ToString()
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"message": "Failed to create session"})
 		c.Abort()
@@ -25,7 +23,7 @@ func generateToken(c *gin.Context, user *model.User) {
 	}
 
 	c.SetSameSite(http.SameSiteLaxMode)
-	c.SetCookie("Authorization", tokenString, 3600*32*1, "", "", false, false)
+	c.SetCookie("Authorization", *tokenString, 3600*32*1, "", "", false, false)
 
 	c.JSON(http.StatusOK, gin.H{"message": "logged in successfully", "token": tokenString})
 }
