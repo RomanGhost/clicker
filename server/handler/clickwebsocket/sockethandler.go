@@ -20,7 +20,7 @@ type ClickSocketHandler struct {
 	userUpdateService *service.UpdateService
 	upgrader          websocket.Upgrader
 	clients           map[*websocket.Conn]*model.User
-	broadcast         chan struct{}
+	broadcast         chan Message
 	mutex             *sync.Mutex
 }
 
@@ -31,7 +31,7 @@ func NewClickSocketHandler(db *gorm.DB) *ClickSocketHandler {
 
 	var (
 		clients   = make(map[*websocket.Conn]*model.User)
-		broadcast = make(chan struct{})
+		broadcast = make(chan Message)
 		mutex     = &sync.Mutex{}
 	)
 
@@ -153,6 +153,7 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 				}
 
 				ush.mutex.Lock()
+				// update user
 				err = ush.userService.ValidateMessage(validateMessage.Valid, validateMessage.Nonce, player, validClickCoef)
 				if err != nil {
 					ush.mutex.Unlock()
@@ -168,9 +169,24 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 			continue
 		}
 
-		// Отправка обновлений всем клиентам
+		userInfo := struct {
+			ValidClicks float64 `json:"valid_clicks"`
+			Clicks      float64 `json:"all_clicks"`
+		}{
+			player.ValidClicks,
+			player.AllClicks,
+		}
+
+		userJson, err := json.Marshal(userInfo)
+		if err != nil {
+			log.Fatalln("Error marshal user info")
+			continue
+		}
+		userMessage := Message{TypeMessage: "user", Data: userJson}
+		conn.WriteJSON(userMessage)
+
 		select {
-		case ush.broadcast <- struct{}{}:
+		case ush.broadcast <- Message{TypeMessage: "info", Data: []byte("")}:
 		default:
 			// Если канал заблокирован, пропускаем отправку
 		}
