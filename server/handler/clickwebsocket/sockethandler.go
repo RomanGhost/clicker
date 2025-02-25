@@ -79,6 +79,21 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 		return
 	}
 
+	userInfo := struct {
+		ValidClicks float64 `json:"valid_clicks"`
+		Clicks      float64 `json:"all_clicks"`
+	}{
+		player.ValidClicks,
+		player.AllClicks,
+	}
+
+	userJson, err := json.Marshal(userInfo)
+	if err != nil {
+		log.Println("Error marshal user info")
+	}
+	userMessage := Message{TypeMessage: "user", Data: userJson}
+	conn.WriteJSON(userMessage)
+
 	closeFunction := func() {
 		conn.Close()
 		// Удаляем клиента из списка при завершении соединения
@@ -123,7 +138,7 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 
 			err = json.Unmarshal(message.Data, &batchMessage)
 			if err != nil {
-				log.Printf("Error with read batch message: %v", err)
+				log.Printf("Error with read batch message: %v, json: %v", err, string(message.Data))
 				continue
 			}
 			updateClicks := ValidateBatch(&batchMessage, clickCoef)
