@@ -26,13 +26,37 @@ func (s *UpdateService) GetById(ID uint) (*model.Update, error) {
 	return s.repo.FindById(ID)
 }
 
+func (s *UpdateService) GetValidClickCoef(user *model.User) (float64, error) {
+	userUpdate, err := s.userUpdateRepo.FindbyUser(user)
+	if err != nil {
+		return 0, err
+	}
+	var resultCoef float64
+	for _, usUp := range userUpdate {
+		resultCoef += usUp.ValidCoef
+	}
+	return resultCoef, nil
+}
+
+func (s *UpdateService) GetClickCoef(user *model.User) (float64, error) {
+	userUpdate, err := s.userUpdateRepo.FindbyUser(user)
+	if err != nil {
+		return 0, err
+	}
+	var resultCoef float64
+	for _, usUp := range userUpdate {
+		resultCoef += usUp.ClickCoef
+	}
+	return resultCoef, nil
+}
+
 func (s *UpdateService) AddUpdateForUser(update *model.Update, user *model.User) (*model.UserUpdate, error) {
 	userUpdate, err := s.userUpdateRepo.FindByUserUpdate(user, update)
 	if userUpdate != nil && err == nil {
-		return nil, fmt.Errorf("userUpdate found")
+		return userUpdate, fmt.Errorf("userUpdate found")
 	}
 
-	if update.MinLeague > user.League.Number {
+	if update.MinLeague > user.League.Number+1 {
 		return nil, fmt.Errorf("user league is lower than required, User:%v, Update:%v", user.League.Number, update.MinLeague)
 	}
 
@@ -58,6 +82,9 @@ func (s *UpdateService) AddUpdateForUser(update *model.Update, user *model.User)
 		Level:  1,
 	}
 
+	newUserUpdate.ClickCoef *= update.ClickCoef
+	newUserUpdate.ValidCoef *= update.ValidCoef
+
 	err = s.userUpdateRepo.Add(&newUserUpdate)
 	if err != nil {
 		return nil, err
@@ -65,10 +92,10 @@ func (s *UpdateService) AddUpdateForUser(update *model.Update, user *model.User)
 	return &newUserUpdate, nil
 }
 
-func (s *UpdateService) LevelUpUpdateForUser(update *model.Update, user *model.User) (*model.UserUpdate, error) {
+func (s *UpdateService) LevelupUpdateForUser(update *model.Update, user *model.User) (*model.UserUpdate, error) {
 	userUpdate, err := s.userUpdateRepo.FindByUserUpdate(user, update)
 	if err != nil {
-		return nil, fmt.Errorf("user update not found, err:%v", err)
+		return nil, fmt.Errorf("userUpdate not found, err:%v", err)
 	}
 	if update.MaxLevel <= userUpdate.Level {
 		return nil, fmt.Errorf("max level")
@@ -76,9 +103,9 @@ func (s *UpdateService) LevelUpUpdateForUser(update *model.Update, user *model.U
 
 	priceClick := update.PriceClick
 	priceValid := update.PriceValid
-	for i := uint(0); i < userUpdate.Level; i++ {
-		priceClick += priceClick * float64(update.PriceGrowthCoef)
-		priceValid += priceValid * float64(update.PriceGrowthCoef)
+	for i := uint(1); i < userUpdate.Level; i++ {
+		priceClick *= float64(update.PriceGrowthCoef)
+		priceValid *= float64(update.PriceGrowthCoef)
 	}
 
 	if user.AllClicks < priceClick {
@@ -96,6 +123,9 @@ func (s *UpdateService) LevelUpUpdateForUser(update *model.Update, user *model.U
 		return nil, err
 	}
 	userUpdate.Level++
+	userUpdate.ClickCoef *= update.ClickCoef
+	userUpdate.ValidCoef *= update.ValidCoef
+
 	err = s.userUpdateRepo.Update(userUpdate)
 	if err != nil {
 		return nil, err

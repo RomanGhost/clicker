@@ -61,8 +61,8 @@ func (s *UserService) GetUserById(userID uint) (*model.User, error) {
 	return s.repo.FindById(userID)
 }
 
-func (s *UserService) UpdateAllClicks(countClicks uint, user *model.User) error {
-	user.AllClicks += 100
+func (s *UserService) UpdateAllClicks(countClicks float64, user *model.User) error {
+	user.AllClicks += countClicks
 
 	err := s.repo.Update(user)
 	if err != nil {
@@ -71,13 +71,13 @@ func (s *UserService) UpdateAllClicks(countClicks uint, user *model.User) error 
 	return nil
 }
 
-func (s *UserService) ValidateMessage(valid, nonce float64, user *model.User) error {
+func (s *UserService) ValidateMessage(valid, nonce float64, user *model.User, validCoef float64) error {
 	if user.ValidClicks != valid {
 		return fmt.Errorf("valid clicks invalid")
 	}
 
 	user.ValidClicks += 1
-	user.AllClicks += nonce
+	// user.AllClicks += nonce
 
 	err := s.repo.Update(user)
 	if err != nil {

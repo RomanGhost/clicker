@@ -1,7 +1,8 @@
 package handler
 
 import (
-	"chat-back/server/handler/user"
+	"chat-back/server/handler/clickwebsocket"
+	"chat-back/server/handler/userhandler"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -21,15 +22,15 @@ func RegisterControllers(r *gin.Engine, db *gorm.DB) {
 }
 
 func registerAuthController(r *gin.Engine, db *gorm.DB) {
-	uh := user.NewUserHandler(db)
+	uh := userhandler.NewUserHandler(db)
 
 	r.POST("/signup", uh.PostSignUp)
 	r.POST("/login", uh.PostLogin)
-	r.POST("/logout", user.Logout)
+	r.POST("/logout", userhandler.Logout)
 }
 
 func registerSocketController(r *gin.Engine, db *gorm.DB) {
-	ush := user.NewUserSocketHandler(db)
+	ush := clickwebsocket.NewClickSocketHandler(db)
 
 	r.GET("/ws", ush.HandleWebSocket)
 	go ush.HandleMessages()

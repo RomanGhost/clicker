@@ -68,22 +68,30 @@ func (h *UpdateHandler) PostBuyUpdate(c *gin.Context) {
 	var userUpdate *model.UserUpdate
 	userUpdate, err = h.updateService.AddUpdateForUser(update, user)
 	// если улучшение найдено
-	if err != nil {
-		userUpdate, err = h.updateService.LevelUpUpdateForUser(update, user)
+	if userUpdate != nil && err != nil {
+		userUpdate, err = h.updateService.LevelupUpdateForUser(update, user)
 		if err != nil {
 			c.JSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Update error:%v", err)})
 			log.Printf("Update error:%v", err)
 			return
 		}
+	} else if err != nil {
+		log.Printf("userUpdate error:%v", err)
+		c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("userUpdate error:%v", err)})
+		return
 	}
 
 	// send info about update
 	responceBody := struct {
-		UpdateID uint `json:"update_id"`
-		Level    uint `json:"level"`
+		UpdateID  uint    `json:"update_id"`
+		Level     uint    `json:"level"`
+		ClickCoef float64 `json:"click_coef"`
+		ValidCoef float64 `json:"valid_coef"`
 	}{
-		UpdateID: userUpdate.UpdateID,
-		Level:    userUpdate.Level,
+		UpdateID:  userUpdate.UpdateID,
+		Level:     userUpdate.Level,
+		ClickCoef: userUpdate.ClickCoef,
+		ValidCoef: userUpdate.ValidCoef,
 	}
 	c.JSON(http.StatusOK, responceBody)
 }

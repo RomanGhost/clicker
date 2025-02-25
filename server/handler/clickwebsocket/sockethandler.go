@@ -1,9 +1,9 @@
-package user
+package clickwebsocket
 
 import (
 	"chat-back/database/model"
 	"chat-back/server/jwtservice"
-	"crypto/sha256"
+	"chat-back/server/service"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -15,26 +15,16 @@ import (
 	"gorm.io/gorm"
 )
 
-type Message struct {
-	TypeMessage string          `json:"typeMessage"`
-	Data        json.RawMessage `json:"data"`
+type ClickSocketHandler struct {
+	userService       *service.UserService
+	userUpdateService *service.UpdateService
+	upgrader          websocket.Upgrader
+	clients           map[*websocket.Conn]*model.User
+	broadcast         chan struct{}
+	mutex             *sync.Mutex
 }
 
-// Определяем структуру для пользователя
-type Validate struct {
-	Valid float64 `json:"valid"`
-	Nonce float64 `json:"nonce"`
-}
-
-type UserSocketHandler struct {
-	UserHandler
-	upgrader  websocket.Upgrader
-	clients   map[*websocket.Conn]*model.User
-	broadcast chan struct{}
-	mutex     *sync.Mutex
-}
-
-func NewUserSocketHandler(db *gorm.DB) *UserSocketHandler {
+func NewClickSocketHandler(db *gorm.DB) *ClickSocketHandler {
 	upgrader := websocket.Upgrader{
 		CheckOrigin: func(r *http.Request) bool { return true },
 	}
@@ -45,35 +35,19 @@ func NewUserSocketHandler(db *gorm.DB) *UserSocketHandler {
 		mutex     = &sync.Mutex{}
 	)
 
-	userHandler := *NewUserHandler(db)
-	return &UserSocketHandler{
-		UserHandler: userHandler,
-		upgrader:    upgrader,
-		clients:     clients,
-		broadcast:   broadcast,
-		mutex:       mutex,
+	userService := service.NewUserService(db)
+	userUpdateService := service.NewUpdateService(db)
+	return &ClickSocketHandler{
+		userService:       userService,
+		userUpdateService: userUpdateService,
+		upgrader:          upgrader,
+		clients:           clients,
+		broadcast:         broadcast,
+		mutex:             mutex,
 	}
 }
 
-func (ush *UserSocketHandler) validMessage(valid, nonce float64, player *model.User, conn *websocket.Conn) error {
-	// message format: "login_valid_nonce"
-	sum := sha256.Sum256([]byte(fmt.Sprintf("%v_%v_%v", player.Login, valid, nonce)))
-	log.Printf("Res of sum: %x\n", sum)
-	if sum[0] != 0 && sum[1] < 128 {
-		return fmt.Errorf("sha256 sum is not valid")
-	}
-
-	err := ush.service.ValidateMessage(valid, nonce, player)
-	if err != nil {
-		log.Printf("Error validate message: %v\n", err)
-		return fmt.Errorf("error %v", err)
-	}
-
-	ush.clients[conn] = player
-	return nil
-}
-
-func (ush *UserSocketHandler) HandleWebSocket(c *gin.Context) {
+func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 	var player *model.User
 
 	// get cookies for auth
@@ -91,7 +65,7 @@ func (ush *UserSocketHandler) HandleWebSocket(c *gin.Context) {
 		return
 	}
 
-	player, err = ush.service.GetUserById(parsedToken.UserID)
+	player, err = ush.userService.GetUserById(parsedToken.UserID)
 	if err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": fmt.Sprintf("User with id: %v not found", parsedToken.UserID)})
 		log.Printf("User with id: %v not found", parsedToken.UserID)
@@ -139,26 +113,56 @@ func (ush *UserSocketHandler) HandleWebSocket(c *gin.Context) {
 		}
 
 		switch message.TypeMessage {
-		// case "updateClicks":
-		// 	ush.mutex.Lock()
-		// 	err := ush.service.UpdateAllClicks(100, player)
-		// 	ush.mutex.Unlock()
-		// 	if err != nil {
-		// 		continue
-		// 	}
+		case "click_batch":
+			var batchMessage ClickBatch
+
+			clickCoef, err := ush.userUpdateService.GetClickCoef(player)
+			if err != nil {
+				log.Fatalf("Error with read clickCoef: %v", err)
+			}
+
+			err = json.Unmarshal(message.Data, &batchMessage)
+			if err != nil {
+				log.Fatalf("Error with read batch message: %v", err)
+				continue
+			}
+			updateClicks := ValidateBatch(&batchMessage, clickCoef)
+
+			ush.mutex.Lock()
+			//Update user score
+			err = ush.userService.UpdateAllClicks(updateClicks, player)
+			if err != nil {
+				ush.mutex.Unlock()
+				log.Fatalf("Error validate batch message: %v\n", err)
+				continue
+			}
+			ush.mutex.Unlock()
+
 		case "valid":
 			var validateMessage Validate
 			if err := json.Unmarshal(message.Data, &validateMessage); err != nil {
 				log.Fatalf("Ошибка при разборе данных: %v", err)
 				continue
 			}
+			messageValidErr := ValidateMessageValid(validateMessage, player.Login)
+			if messageValidErr == nil {
+				//get coef
+				validClickCoef, err := ush.userUpdateService.GetValidClickCoef(player)
+				if err != nil {
+					log.Fatalf("Error with read clickCoef: %v", err)
+				}
 
-			ush.mutex.Lock()
-			err := ush.validMessage(validateMessage.Valid, validateMessage.Nonce, player, conn)
-			ush.mutex.Unlock()
-			if err != nil {
+				ush.mutex.Lock()
+				err = ush.userService.ValidateMessage(validateMessage.Valid, validateMessage.Nonce, player, validClickCoef)
+				if err != nil {
+					ush.mutex.Unlock()
+					log.Printf("Error validate message: %v\n", err)
+					continue
+				}
+			} else {
 				continue
 			}
+
 		default:
 			log.Println("Получено неизвестное сообщение:", message)
 			continue
@@ -173,7 +177,7 @@ func (ush *UserSocketHandler) HandleWebSocket(c *gin.Context) {
 	}
 }
 
-func (ush *UserSocketHandler) HandleMessages() {
+func (ush *ClickSocketHandler) HandleMessages() {
 	for range ush.broadcast {
 		ush.mutex.Lock()
 		scores := ""
