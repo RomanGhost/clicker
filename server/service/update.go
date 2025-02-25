@@ -22,17 +22,36 @@ func NewUpdateService(db *gorm.DB) *UpdateService {
 	return &UpdateService{repo: repo, userUpdateRepo: userUpdateRepo, userRepo: userRepo}
 }
 
+func (s *UpdateService) AddUpdateForUser(update *model.Update, user *model.User) (*model.UserUpdate, error) {
+	userUpdate, err := s.userUpdateRepo.FindByUserUpdate(user, update)
+	if userUpdate != nil && err == nil {
+		return nil, fmt.Errorf("user update found")
+	}
+
+	newUserUpdate := model.UserUpdate{
+		User:   *user,
+		Update: *update,
+		Level:  1,
+	}
+
+	err = s.userUpdateRepo.Add(&newUserUpdate)
+	if err != nil {
+		return nil, err
+	}
+	return &newUserUpdate, nil
+}
+
 func (s *UpdateService) GetById(ID uint) (*model.Update, error) {
 	return s.repo.FindById(ID)
 }
 
-func (s *UpdateService) LevelUpUpdateForUser(update *model.Update, user *model.User) error {
+func (s *UpdateService) LevelUpUpdateForUser(update *model.Update, user *model.User) (*model.UserUpdate, error) {
 	userUpdate, err := s.userUpdateRepo.FindByUserUpdate(user, update)
 	if err != nil {
-		return fmt.Errorf("user update not found, err:%v", err)
+		return nil, fmt.Errorf("user update not found, err:%v", err)
 	}
 	if update.MaxLevel <= userUpdate.Level {
-		return fmt.Errorf("max level")
+		return nil, fmt.Errorf("max level")
 	}
 
 	priceClick := update.PriceClick
@@ -43,10 +62,10 @@ func (s *UpdateService) LevelUpUpdateForUser(update *model.Update, user *model.U
 	}
 
 	if user.AllClicks < priceClick {
-		return fmt.Errorf("user haven't clicks")
+		return nil, fmt.Errorf("user haven't clicks")
 	}
 	if user.ValidClicks < priceValid {
-		return fmt.Errorf("user haven't valid clicks")
+		return nil, fmt.Errorf("user haven't valid clicks")
 	}
 
 	user.AllClicks -= priceClick
@@ -54,13 +73,13 @@ func (s *UpdateService) LevelUpUpdateForUser(update *model.Update, user *model.U
 
 	err = s.userRepo.Update(user)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	userUpdate.Level++
 	err = s.userUpdateRepo.Update(userUpdate)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return userUpdate, nil
 }
