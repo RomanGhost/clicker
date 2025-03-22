@@ -13,7 +13,6 @@ func RegisterControllers(r *gin.Engine, db *gorm.DB) {
 		registerAuthController,
 		registerSocketController,
 		registerTransactionController,
-		registerUpdateController,
 	}
 
 	for _, controller := range controllers {
@@ -40,9 +39,4 @@ func registerTransactionController(r *gin.Engine, db *gorm.DB) {
 	t := NewTransactionHandler(db)
 
 	r.POST("/new_transaction", t.PostCreateTransaction)
-}
-
-func registerUpdateController(r *gin.Engine, db *gorm.DB) {
-	u := NewUpdateHandler(db)
-	r.POST("/buy_update", u.PostBuyUpdate)
 }

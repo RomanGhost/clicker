@@ -4,10 +4,10 @@ import "gorm.io/gorm"
 
 type Transaction struct {
 	gorm.Model
-	SenderID   uint `gorm:"not null"` // Внешний ключ на User
-	Sender     User `gorm:"foreignKey:SenderID"`
-	ReceiverID uint `gorm:"not null"` // Внешний ключ на User
-	Receiver   User `gorm:"foreignKey:ReceiverID"`
+	SenderID   int `gorm:"not null"`
+	ReceiverID int `gorm:"not null"`
 	Valid      float64
 	Clicks     float64
+	Sender     User `gorm:"foreignKey:SenderID"`
+	Receiver   User `gorm:"foreignKey:ReceiverID"`
 }

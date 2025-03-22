@@ -1,7 +1,8 @@
 package model
 
 type League struct {
-	Number    uint   `gorm:"primaryKey"`
-	Name      string `gorm:"unique;not null"`
-	MinClicks uint
+	ID             uint   `gorm:"primaryKey"`
+	Code           string `gorm:"unique;not null"`
+	MinUsualClicks int
+	MinValidClicks int `gorm:"dafault:0"`
 }

@@ -21,7 +21,7 @@ func NewTransactionService(db *gorm.DB) *TransactionService {
 }
 
 func (ts *TransactionService) CreateTransaction(sender, receiver *model.User, sendValid, sendClick float64) (*model.Transaction, error) {
-	if sender.AllClicks < sendClick {
+	if sender.UsualClicks < sendClick {
 		return nil, fmt.Errorf("sender balance clicks less %v", sendClick)
 	}
 
@@ -41,10 +41,10 @@ func (ts *TransactionService) CreateTransaction(sender, receiver *model.User, se
 	}
 
 	sender.ValidClicks -= sendValid
-	sender.AllClicks -= sendClick
+	sender.UsualClicks -= sendClick
 
 	receiver.ValidClicks += sendValid
-	receiver.AllClicks += sendClick
+	receiver.UsualClicks += sendClick
 
 	errSender := ts.userRepo.Update(sender)
 	errReceiver := ts.userRepo.Update(receiver)

@@ -37,7 +37,7 @@ func (s *UserService) RegisterUser(login, password string) (*model.User, error) 
 		Login:       login,
 		Password:    string(hashPassword),
 		ValidClicks: 0,
-		AllClicks:   0,
+		UsualClicks: 0,
 	}
 	err = s.AddUser(&newUser)
 	if err != nil {
@@ -62,7 +62,7 @@ func (s *UserService) GetUserById(userID uint) (*model.User, error) {
 }
 
 func (s *UserService) UpdateAllClicks(countClicks float64, user *model.User) error {
-	user.AllClicks += countClicks
+	user.UsualClicks += countClicks
 
 	err := s.repo.Update(user)
 	if err != nil {
@@ -71,7 +71,7 @@ func (s *UserService) UpdateAllClicks(countClicks float64, user *model.User) err
 	return nil
 }
 
-func (s *UserService) ValidateMessage(valid, nonce float64, user *model.User, validCoef float64) error {
+func (s *UserService) ValidateMessage(valid, nonce float64, user *model.User) error {
 	if user.ValidClicks != valid {
 		return fmt.Errorf("valid clicks invalid")
 	}

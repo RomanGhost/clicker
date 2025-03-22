@@ -16,12 +16,11 @@ import (
 )
 
 type ClickSocketHandler struct {
-	userService       *service.UserService
-	userUpdateService *service.UpdateService
-	upgrader          websocket.Upgrader
-	clients           map[*websocket.Conn]*model.User
-	broadcast         chan Message
-	mutex             *sync.Mutex
+	userService *service.UserService
+	upgrader    websocket.Upgrader
+	clients     map[*websocket.Conn]*model.User
+	broadcast   chan Message
+	mutex       *sync.Mutex
 }
 
 func NewClickSocketHandler(db *gorm.DB) *ClickSocketHandler {
@@ -36,14 +35,12 @@ func NewClickSocketHandler(db *gorm.DB) *ClickSocketHandler {
 	)
 
 	userService := service.NewUserService(db)
-	userUpdateService := service.NewUpdateService(db)
 	return &ClickSocketHandler{
-		userService:       userService,
-		userUpdateService: userUpdateService,
-		upgrader:          upgrader,
-		clients:           clients,
-		broadcast:         broadcast,
-		mutex:             mutex,
+		userService: userService,
+		upgrader:    upgrader,
+		clients:     clients,
+		broadcast:   broadcast,
+		mutex:       mutex,
 	}
 }
 
@@ -84,7 +81,7 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 		Clicks      float64 `json:"all_clicks"`
 	}{
 		player.ValidClicks,
-		player.AllClicks,
+		player.UsualClicks,
 	}
 
 	userJson, err := json.Marshal(userInfo)
@@ -130,8 +127,6 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 		switch message.TypeMessage {
 		case "click_batch":
 			var batchMessage ClickBatch
-
-			clickCoef := ush.userUpdateService.GetClickCoef(player)
 			// if err != nil {
 			// 	log.Printf("Error with read clickCoef: %v", err)
 			// }
@@ -141,7 +136,7 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 				log.Printf("Error with read batch message: %v, json: %v", err, string(message.Data))
 				continue
 			}
-			updateClicks := ValidateBatch(&batchMessage, clickCoef)
+			updateClicks := ValidateBatch(&batchMessage)
 
 			ush.mutex.Lock()
 			//Update user score
@@ -161,15 +156,13 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 			}
 			messageValidErr := ValidateMessageValid(validateMessage, player.Login)
 			if messageValidErr == nil {
-				//get coef
-				validClickCoef := ush.userUpdateService.GetValidClickCoef(player)
 				// if err != nil {
 				// 	log.Fatalf("Error with read valid clickCoef: %v", err)
 				// }
 
 				ush.mutex.Lock()
 				// update user
-				err = ush.userService.ValidateMessage(validateMessage.Valid, validateMessage.Nonce, player, validClickCoef)
+				err = ush.userService.ValidateMessage(validateMessage.Valid, validateMessage.Nonce, player)
 				if err != nil {
 					ush.mutex.Unlock()
 					log.Printf("Error validate message: %v\n", err)
@@ -189,7 +182,7 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 			Clicks      float64 `json:"all_clicks"`
 		}{
 			player.ValidClicks,
-			player.AllClicks,
+			player.UsualClicks,
 		}
 
 		userJson, err := json.Marshal(userInfo)

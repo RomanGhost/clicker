@@ -49,10 +49,11 @@ func autoClickValid(batch *ClickBatch) bool {
 	return mean != median
 }
 
-func ValidateBatch(batch *ClickBatch, maxClickValue float64) float64 {
+func ValidateBatch(batch *ClickBatch) float64 {
 	batchTime := time.Unix(batch.SendTime, 0)
 	serverTime := time.Now().UTC()
 	differenceTime := serverTime.Sub(batchTime)
+
 	if differenceTime.Abs() > time.Second*45 {
 		log.Println("the batchtime arrived is too late - reject")
 		return 0
@@ -71,9 +72,6 @@ func ValidateBatch(batch *ClickBatch, maxClickValue float64) float64 {
 
 	var resultClicks float64
 	for _, click := range batch.ClicksInfo {
-		if click.ClickValue > maxClickValue {
-			continue
-		}
 		resultClicks += click.ClickValue
 
 	}

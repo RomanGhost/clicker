@@ -4,10 +4,12 @@ import "gorm.io/gorm"
 
 type User struct {
 	gorm.Model
-	Login       string  `gorm:"unique;not null"`
-	Password    string  `gorm:"not null"`
-	ValidClicks float64 `gorm:"default:0"`
-	AllClicks   float64 `gorm:"default:0"`
-	LeagueID    uint    `gorm:"default:1"` // Внешний ключ для связи с League
-	League      League  `gorm:"foreignKey:LeagueID"`
+	Login       string   `gorm:"unique;not null"`
+	Password    string   `gorm:"not null"`
+	ValidClicks float64  `gorm:"default:0"`
+	UsualClicks float64  `gorm:"default:0"`
+	League      League   `gorm:"foreignKey:LeagueID"`
+	LeagueID    int      `gorm:"default:1"`
+	Language    Language `gorm:"foreignKey:LanguageID;default:English"`
+	LanguageID  string   `gorm:"size:32"`
 }
