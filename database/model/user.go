@@ -10,6 +10,6 @@ type User struct {
 	UsualClicks float64  `gorm:"default:0"`
 	League      League   `gorm:"foreignKey:LeagueID"`
 	LeagueID    int      `gorm:"default:1"`
-	Language    Language `gorm:"foreignKey:LanguageID;default:English"`
-	LanguageID  string   `gorm:"size:32"`
+	Language    Language `gorm:"foreignKey:LanguageID"`
+	LanguageID  string   `gorm:"size:32;default:English"`
 }

@@ -9,34 +9,41 @@ import (
 )
 
 func RegisterControllers(r *gin.Engine, db *gorm.DB) {
-	controllers := []func(*gin.Engine, *gorm.DB){
+	apiLink := r.Group("api/v1/clicker")
+	controllers := []func(*gin.RouterGroup, *gorm.DB){
 		registerAuthController,
 		registerSocketController,
 		registerTransactionController,
 	}
 
 	for _, controller := range controllers {
-		controller(r, db)
+		controller(apiLink, db)
 	}
 }
 
-func registerAuthController(r *gin.Engine, db *gorm.DB) {
+func registerAuthController(r *gin.RouterGroup, db *gorm.DB) {
 	uh := userhandler.NewUserHandler(db)
 
-	r.POST("/signup", uh.PostSignUp)
-	r.POST("/login", uh.PostLogin)
-	r.POST("/logout", userhandler.Logout)
+	rg := r.Group("/auth")
+
+	rg.POST("/signup", uh.PostSignUp)
+	rg.POST("/login", uh.PostLogin)
+	rg.POST("/logout", userhandler.Logout)
 }
 
-func registerSocketController(r *gin.Engine, db *gorm.DB) {
+func registerSocketController(r *gin.RouterGroup, db *gorm.DB) {
 	ush := clickwebsocket.NewClickSocketHandler(db)
 
 	r.GET("/ws", ush.HandleWebSocket)
 	go ush.HandleMessages()
 }
 
-func registerTransactionController(r *gin.Engine, db *gorm.DB) {
+func registerTransactionController(r *gin.RouterGroup, db *gorm.DB) {
 	t := NewTransactionHandler(db)
 
-	r.POST("/new_transaction", t.PostCreateTransaction)
+	rg := r.Group("/transaction")
+
+	rg.POST("/new", t.PostCreateTransaction)
+	rg.GET("/get/all", t.GetTransactionByUser)
+	rg.GET("/get", t.GetTransactionById)
 }

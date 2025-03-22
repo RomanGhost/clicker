@@ -12,6 +12,7 @@ type UserRepository interface {
 }
 
 type userRepository struct {
+	RepositoryStruct[model.User]
 	db *gorm.DB
 }
 
@@ -20,24 +21,6 @@ func NewUserRepository(db *gorm.DB) UserRepository {
 		db: db,
 	}
 }
-
-func (r *userRepository) FindById(ID uint) (*model.User, error) {
-	var user model.User
-	err := r.db.First(&user, ID).Error
-	if err != nil {
-		return nil, err
-	}
-	return &user, nil
-}
-
-func (r *userRepository) Update(object *model.User) error {
-	return r.db.Save(object).Error
-}
-
-func (r *userRepository) Add(object *model.User) error {
-	return r.db.Create(object).Error
-}
-
 func (r *userRepository) FindByLogin(login string) (*model.User, error) {
 	var user model.User
 	err := r.db.First(&user, "login = ?", login).Error

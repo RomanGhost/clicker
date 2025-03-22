@@ -68,7 +68,7 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 		log.Printf("User with id: %v not found", parsedToken.UserID)
 		return
 	}
-	// обновляем соединение
+	// update connection
 	conn, err := ush.upgrader.Upgrade(c.Writer, c.Request, nil)
 	if err != nil {
 		c.JSON(http.StatusForbidden, gin.H{"error": "connection error"})
@@ -127,10 +127,6 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 		switch message.TypeMessage {
 		case "click_batch":
 			var batchMessage ClickBatch
-			// if err != nil {
-			// 	log.Printf("Error with read clickCoef: %v", err)
-			// }
-
 			err = json.Unmarshal(message.Data, &batchMessage)
 			if err != nil {
 				log.Printf("Error with read batch message: %v, json: %v", err, string(message.Data))
@@ -156,10 +152,6 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 			}
 			messageValidErr := ValidateMessageValid(validateMessage, player.Login)
 			if messageValidErr == nil {
-				// if err != nil {
-				// 	log.Fatalf("Error with read valid clickCoef: %v", err)
-				// }
-
 				ush.mutex.Lock()
 				// update user
 				err = ush.userService.ValidateMessage(validateMessage.Valid, validateMessage.Nonce, player)
@@ -208,9 +200,9 @@ func (ush *ClickSocketHandler) HandleMessages() {
 		for _, player := range ush.clients {
 			scores += fmt.Sprintf("%s: %v валидных кликов\n", player.Login, player.ValidClicks)
 		}
-		for client := range ush.clients {
-			client.WriteMessage(websocket.TextMessage, []byte(scores))
-		}
+		// for client := range ush.clients {
+		// 	client.WriteMessage(websocket.TextMessage, []byte(scores))
+		// }
 		ush.mutex.Unlock()
 	}
 }

@@ -77,7 +77,6 @@ func (s *UserService) ValidateMessage(valid, nonce float64, user *model.User) er
 	}
 
 	user.ValidClicks += 1
-	// user.AllClicks += nonce
 
 	err := s.repo.Update(user)
 	if err != nil {

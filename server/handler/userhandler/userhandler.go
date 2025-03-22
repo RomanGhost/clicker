@@ -11,7 +11,6 @@ type UserHandler struct {
 }
 
 func NewUserHandler(db *gorm.DB) *UserHandler {
-
 	userService := service.NewUserService(db)
 	userHandler := UserHandler{
 		service: userService,
