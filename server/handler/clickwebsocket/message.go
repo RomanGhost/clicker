@@ -3,7 +3,7 @@ package clickwebsocket
 import "encoding/json"
 
 type Message struct {
-	TypeMessage string          `json:"typeMessage"`
+	TypeMessage string          `json:"type_message"`
 	Data        json.RawMessage `json:"data"`
 }
 
@@ -20,4 +20,9 @@ type ClickBatch struct {
 type click struct {
 	ClickValue float64 `json:"click_value"`
 	ClickTime  int64   `json:"click_time"`
+}
+
+type UserInfo struct {
+	ValidClicks float64 `json:"valid_clicks"`
+	Clicks      float64 `json:"all_clicks"`
 }

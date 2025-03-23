@@ -76,10 +76,7 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 		return
 	}
 
-	userInfo := struct {
-		ValidClicks float64 `json:"valid_clicks"`
-		Clicks      float64 `json:"all_clicks"`
-	}{
+	userInfo := UserInfo{
 		player.ValidClicks,
 		player.UsualClicks,
 	}
@@ -132,6 +129,7 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 				log.Printf("Error with read batch message: %v, json: %v", err, string(message.Data))
 				continue
 			}
+			log.Printf("Get batch: %+v", batchMessage)
 			updateClicks := ValidateBatch(&batchMessage)
 
 			ush.mutex.Lock()

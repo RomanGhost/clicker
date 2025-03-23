@@ -25,6 +25,10 @@ func clicksPerSecondValid(batch *ClickBatch) bool {
 }
 
 func autoClickValid(batch *ClickBatch) bool {
+	if len(batch.ClicksInfo) < 2 {
+		return true
+	}
+
 	var diff []int64
 	var sum int64
 	for i := 1; i < len(batch.ClicksInfo); i++ {
@@ -84,7 +88,7 @@ func ValidateMessageValid(message Validate, userLogin string) error {
 	// message format: "login_valid_nonce"
 	sum := sha256.Sum256([]byte(fmt.Sprintf("%v_%v_%v", userLogin, valid, nonce)))
 	log.Printf("Res of sum: %x\n", sum)
-	if sum[0] != 0 && sum[1] < 128 {
+	if sum[0] != 0 && sum[1] < 16 {
 		return fmt.Errorf("sha256 sum is not valid")
 	}
 

@@ -13,12 +13,11 @@ type UserRepository interface {
 
 type userRepository struct {
 	RepositoryStruct[model.User]
-	db *gorm.DB
 }
 
 func NewUserRepository(db *gorm.DB) UserRepository {
 	return &userRepository{
-		db: db,
+		RepositoryStruct: RepositoryStruct[model.User]{db: db},
 	}
 }
 func (r *userRepository) FindByLogin(login string) (*model.User, error) {
