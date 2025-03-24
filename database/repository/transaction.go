@@ -17,13 +17,13 @@ type transactionRepository struct {
 
 func NewTransactionRepository(db *gorm.DB) TransactionRepository {
 	return &transactionRepository{
-		RepositoryStruct: RepositoryStruct[model.Transaction]{db: db},
+		RepositoryStruct: RepositoryStruct[model.Transaction]{db: db.Preload("Sender").Preload("Receiver")},
 	}
 }
 
 func (r *transactionRepository) FindByUser(user *model.User) ([]model.Transaction, error) {
 	var transactions []model.Transaction
-	err := r.db.Find(&transactions, "senderID = ? OR receiverID = ?", user.ID, user.ID).Error
+	err := r.db.Session(&gorm.Session{}).Find(&transactions, "sender_ID = ? OR receiver_ID = ?", user.ID, user.ID).Error
 	if err != nil {
 		return nil, err
 	}

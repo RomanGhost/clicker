@@ -14,7 +14,7 @@ func NewRepository[T any](db *gorm.DB) *RepositoryStruct[T] {
 
 func (r *RepositoryStruct[T]) FindById(ID uint) (*T, error) {
 	var object T
-	err := r.db.First(&object, ID).Error
+	err := r.db.Session(&gorm.Session{}).First(&object, ID).Error
 	if err != nil {
 		return nil, err
 	}

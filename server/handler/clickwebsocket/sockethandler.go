@@ -50,6 +50,7 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 	// get cookies for auth
 	tokenCookie, err := c.Request.Cookie("Authorization")
 	if err != nil {
+		log.Printf("token in cookies not found: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "token in cookies not found"})
 		return
 	}
@@ -57,6 +58,7 @@ func (ush *ClickSocketHandler) HandleWebSocket(c *gin.Context) {
 
 	parsedToken, err := jwtservice.GetFromJWT(tokenString)
 	if err != nil {
+		log.Printf("Failed to parse jwt: %v", err)
 		c.JSON(http.StatusUnauthorized, gin.H{"message": "Failed to parse jwt"})
 		c.Abort()
 		return

@@ -90,8 +90,8 @@ func (h *TransactionHandler) GetTransactionById(c *gin.Context) {
 	}
 
 	transaction, err := h.service.GetById(uint(ID))
-	if err != nil {
-		c.AbortWithStatusJSON(http.StatusNotAcceptable, gin.H{"error": fmt.Sprintf("Transaction with id: %v not found", ID)})
+	if err != nil || transaction == nil {
+		c.AbortWithStatusJSON(http.StatusNotFound, gin.H{"error": fmt.Sprintf("Transaction with id: %v not found", ID)})
 	}
 
 	sendBody := transactionJSON{
