@@ -106,6 +106,7 @@ func (h *TransactionHandler) GetTransactionById(c *gin.Context) {
 
 func (h *TransactionHandler) GetTransactionByUser(c *gin.Context) {
 	// get cookies for auth
+	log.Println("Cookies", c.Request.Cookies())
 	tokenCookie, err := c.Request.Cookie("Authorization")
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token in cookies not found"})
