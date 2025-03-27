@@ -1,4 +1,4 @@
-package userhandler
+package user
 
 import (
 	"chat-back/database/model"

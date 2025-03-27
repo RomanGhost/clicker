@@ -2,7 +2,7 @@ package handler
 
 import (
 	"chat-back/server/handler/clickwebsocket"
-	"chat-back/server/handler/userhandler"
+	"chat-back/server/handler/user"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -14,6 +14,7 @@ func RegisterControllers(r *gin.Engine, db *gorm.DB) {
 		registerAuthController,
 		registerSocketController,
 		registerTransactionController,
+		registerUserController,
 	}
 
 	for _, controller := range controllers {
@@ -22,13 +23,22 @@ func RegisterControllers(r *gin.Engine, db *gorm.DB) {
 }
 
 func registerAuthController(r *gin.RouterGroup, db *gorm.DB) {
-	uh := userhandler.NewUserHandler(db)
+	uh := user.NewUserHandler(db)
 
 	rg := r.Group("/auth")
 
 	rg.POST("/signup", uh.PostSignUp)
 	rg.POST("/login", uh.PostLogin)
-	rg.POST("/logout", userhandler.Logout)
+	rg.POST("/logout", user.Logout)
+}
+
+func registerUserController(r *gin.RouterGroup, db *gorm.DB) {
+	uh := user.NewUserHandler(db)
+
+	rg := r.Group("/user")
+
+	rg.GET("/get/login", uh.GetUserByLogin)
+	rg.GET("/profile", uh.GetUserProfile)
 }
 
 func registerSocketController(r *gin.RouterGroup, db *gorm.DB) {

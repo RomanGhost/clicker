@@ -81,12 +81,12 @@ func (h *TransactionHandler) PostCreateTransaction(c *gin.Context) {
 func (h *TransactionHandler) GetTransactionById(c *gin.Context) {
 	res, ok := c.GetQuery("id")
 	if !ok {
-		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Param id not found"})
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"error": "Param 'id' not found"})
 		return
 	}
 	ID, err := strconv.ParseUint(res, 10, 32)
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusNotAcceptable, gin.H{"error": "id isn't number"})
+		c.AbortWithStatusJSON(http.StatusNotAcceptable, gin.H{"error": "'id' isn't number"})
 	}
 
 	transaction, err := h.service.GetById(uint(ID))
@@ -106,7 +106,6 @@ func (h *TransactionHandler) GetTransactionById(c *gin.Context) {
 
 func (h *TransactionHandler) GetTransactionByUser(c *gin.Context) {
 	// get cookies for auth
-	log.Println("Cookies", c.Request.Cookies())
 	tokenCookie, err := c.Request.Cookie("Authorization")
 	if err != nil {
 		c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "token in cookies not found"})

@@ -17,12 +17,12 @@ type userRepository struct {
 
 func NewUserRepository(db *gorm.DB) UserRepository {
 	return &userRepository{
-		RepositoryStruct: RepositoryStruct[model.User]{db: db},
+		RepositoryStruct: RepositoryStruct[model.User]{db: db.Preload("League")},
 	}
 }
 func (r *userRepository) FindByLogin(login string) (*model.User, error) {
 	var user model.User
-	err := r.db.First(&user, "login = ?", login).Error
+	err := r.db.Session(&gorm.Session{}).First(&user, "login = ?", login).Error
 	if err != nil {
 		return nil, err
 	}

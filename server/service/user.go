@@ -61,6 +61,10 @@ func (s *UserService) GetUserById(userID uint) (*model.User, error) {
 	return s.repo.FindById(userID)
 }
 
+func (s *UserService) GetUserByLogin(login string) (*model.User, error) {
+	return s.repo.FindByLogin(login)
+}
+
 func (s *UserService) UpdateAllClicks(countClicks float64, user *model.User) error {
 	user.UsualClicks += countClicks
 
